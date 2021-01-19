@@ -8,7 +8,7 @@ function RurkiProjekt(k)
     G = 6.67408 * 10^(-1);
   
     % f(x) 
-    f = @(x) (4*pi* G) .* ((1<x) * (x<=2));
+    f = @(x) (4 * pi * G) .* ((1 < x) * (x <= 2));
     
     % dirichlet shift
     udash = @(x) (-x./3 + 5);
@@ -19,22 +19,19 @@ function RurkiProjekt(k)
     % get base functions and their derivatives
     [ei, eid] = getBaseFunctions(points);
     
-    [w, u] = solve(k, f, udash, ei, eid, points);
-   
-    % Number of points to plot for u(x) and w(x).
-    argsNum = 1200;
+    [w, u] = solveDiff(k, f, udash, ei, eid, points);
     
-    drawChart(x0, xn, argsNum, u, w);
+    drawChart(x0, xn, u, w);
 end
 
-function [w, u] = solve(k, f, udash, ei, eid, points)
+function [w, u] = solveDiff(k, f, udash, ei, eid, points)
     % derivative of udash
     udashd = @(x) (-1/3);
     
     % number of dividing points
     n = k + 1;
     
-    % drugi nawias - postać funkcji
+    % functions from which we calculate integrals
     B = @(wd,vd, x) (wd(x) .* vd(x));
     Bdash = @(wd,vd, x) (wd(x) .* vd(x)); 
     L = @(v, x) (f(x) .* v(x));
@@ -50,42 +47,43 @@ function [w, u] = solve(k, f, udash, ei, eid, points)
             
             % function used to integral
             integralFunc = @(x) B(e1d, e2d, x);
-            Bmatrix(j,k) = (-(gaussLegendreIntegral(integralFunc, points(j-1), points(j)) + gaussLegendreIntegral(integralFunc, points(j), points(j+1))));
+            Bmatrix(j,k) = (-(calculateIntegral(integralFunc, points(j-1), points(j)) + calculateIntegral(integralFunc, points(j), points(j+1))));
         end
     end
+    
     for i = 2: (n - 1)
         e = ei{i};
         integralFunc2 = @(x) L(e, x);
-        Lmatrix(i) = (gaussLegendreIntegral(integralFunc2, points(i-1), points(i)) + gaussLegendreIntegral(integralFunc2, points(i), points(i+1)));
+        Lmatrix(i) = (calculateIntegral(integralFunc2, points(i-1), points(i)) + calculateIntegral(integralFunc2, points(i), points(i+1)));
 
         ed = eid{i};
         integralFunc3 = @(x) Bdash(udashd, ed, x);
-        Bdashmatrix(i) = (gaussLegendreIntegral(integralFunc3, points(i-1), points(i)) + gaussLegendreIntegral(integralFunc3, points(i), points(i+1)));
+        Bdashmatrix(i) = (calculateIntegral(integralFunc3, points(i-1), points(i)) + calculateIntegral(integralFunc3, points(i), points(i+1)));
     end
   
       % first base function
       e = ei{1};
       ed = eid{1};
       integralFunc = @(x) L(e, x);
-      Lmatrix(1) = gaussLegendreIntegral(integralFunc, points(1), points(2));
+      Lmatrix(1) = calculateIntegral(integralFunc, points(1), points(2));
       
       integralFunc2 = @(x) Bdash(udashd, ed, x);
-      Bdashmatrix(1) = gaussLegendreIntegral(integralFunc2, points(1), points(2));
+      Bdashmatrix(1) = calculateIntegral(integralFunc2, points(1), points(2));
 
       integralFunc3 = @(x) B(ed, ed, x);
-      Bmatrix(1,1) = (-gaussLegendreIntegral(integralFunc3, points(1), points(2)));
+      Bmatrix(1,1) = (-calculateIntegral(integralFunc3, points(1), points(2)));
 
       % last base function
       e = ei{n};
       ed = eid{n};
       integralFunc = @(x) L(e, x);
-      Lmatrix(n) = gaussLegendreIntegral(integralFunc, points(n-1), points(n));
+      Lmatrix(n) = calculateIntegral(integralFunc, points(n-1), points(n));
       
       integralFunc2 = @(x) Bdash(udashd, ed, x);
-      Bdashmatrix(1) = gaussLegendreIntegral(integralFunc2, points(n-1), points(n));
+      Bdashmatrix(1) = calculateIntegral(integralFunc2, points(n-1), points(n));
       
       integralFunc3 = @(x) B(ed, ed, x);
-      Bmatrix(n,n) = (-gaussLegendreIntegral(integralFunc3, points(n-1), points(n)));
+      Bmatrix(n,n) = (-calculateIntegral(integralFunc3, points(n-1), points(n)));
       
       % calculatte weights
       wi = Bmatrix \ (Lmatrix - Bdashmatrix);
@@ -128,22 +126,27 @@ function [functions, derivatives] = getBaseFunctions(xi)
   end
 end
 
-function integral = gaussLegendreIntegral(f, a, b)
-  point1 = -1/sqrt(3);
-  point2 = 1/sqrt(3);
+% Integral Calculated With Gauss–Legendre Quadrature
+function integral = calculateIntegral(f, a, b)
+  x1 = -1 / sqrt(3);
+  x2 = 1 / sqrt(3);
+  
   w1 = 1;
   w2 = 1;
 
-  coef1 = (b-a)/2;
-  coef2 = (b+a)/2;
+  c1 = (b - a) / 2;
+  c2 = (b + a) / 2;
 
-  x1 = coef1*point1 + coef2;
-  x2 = coef1*point2 + coef2;
+  u1 = c1 * x1 + c2;
+  u2 = c1 * x2 + c2;
   
-  integral = coef1*(w1*f(x1) + w2*f(x2));
+  integral = c1 * (w1 * f(u1) + w2 * f(u2));
 end
 
-function drawChart(x0, xn, argsNum, u, w)
+function drawChart(x0, xn, u, w)
+  % Number of points to plot
+  argsNum = 1200;
+
   args = linspace(x0, xn, argsNum);
   
   uValues = zeros(argsNum, 1);
